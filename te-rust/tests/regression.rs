@@ -9,7 +9,7 @@ fn get_te_rust_bin() -> PathBuf {
 fn get_trec_eval_bin() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop(); // Go to workspace root
-    path.push("trec_eval");
+    path.push(get_trec_eval_dir_name());
     path.push("trec_eval");
     path
 }
@@ -17,10 +17,14 @@ fn get_trec_eval_bin() -> PathBuf {
 fn get_test_file_path(filename: &str) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop(); // Go to workspace root
-    path.push("trec_eval");
+    path.push(get_trec_eval_dir_name());
     path.push("test");
     path.push(filename);
     path
+}
+
+fn get_trec_eval_dir_name() -> String {
+    std::env::var("TREC_EVAL_DIR").unwrap_or_else(|_| "trec_eval".to_string())
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -300,5 +304,4 @@ fn test_regression_qrels_jg_with_comments() {
         "results.test",
     );
 }
-
 
