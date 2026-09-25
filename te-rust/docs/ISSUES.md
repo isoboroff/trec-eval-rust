@@ -13,6 +13,11 @@ This document tracks active design questions, structural decisions, and implemen
 
 ## Resolved Issues
 
+### 28. Predefined Measure Group Definitions & Output Parity
+*   **Type**: bug
+*   **Status**: Resolved
+*   **Description**: Aligned predefined measure groups (`all_trec`, `official`, `set`, `qrels_jg`) in `metrics/registry.rs` with C `trec_eval`'s canonical definitions from `measures.c`. Implemented `NumQMeasure` in `metrics/num_q.rs` (reporting query count in summary `all`, suppressed from query-level output matching C `te_print_single_meas_empty`). Implemented missing set measures `SetPMeasure` (`set_P`) and `SetRecallMeasure` (`set_recall`). Fixed `RunIdMeasure` query-level suppression (`is_query_enabled = false`). Individual `-m` command-line flags maintain user-specified insertion order while predefined group expansions produce canonical C `trec_eval` ordering. Verified 0-diff parity against live C `trec_eval` on standard and JG test suites.
+
 ### 22. Confidence intervals
 *   **Type**: feature
 *   **Status**: Resolved

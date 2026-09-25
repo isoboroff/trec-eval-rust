@@ -33,6 +33,14 @@ impl Measure for RunIdMeasure {
         vec!["runid".to_string()]
     }
 
+    fn is_query_enabled(&self) -> bool {
+        false
+    }
+
+    fn is_summary_enabled(&self) -> bool {
+        true
+    }
+
     fn invariants(&self) -> &'static [crate::metrics::invariants::Invariant] {
         crate::metrics::invariants::NONE
     }

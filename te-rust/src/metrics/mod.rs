@@ -1,5 +1,6 @@
 pub mod common;
 pub mod runid;
+pub mod num_q;
 pub mod num_ret;
 pub mod num_rel;
 pub mod num_rel_ret;
@@ -15,6 +16,8 @@ pub mod success;
 pub mod avg_11pt;
 pub mod utility;
 pub mod relstring;
+pub mod set_p;
+pub mod set_recall;
 pub mod set_relative_p;
 pub mod set_map;
 pub mod set_f;

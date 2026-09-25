@@ -74,6 +74,7 @@ pub fn registry() -> &'static [MeasureSpec] {
     use MeasureStatus::*;
     &[
         MeasureSpec { name: "runid", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::runid::RunIdMeasure::new())) },
+        MeasureSpec { name: "num_q", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::num_q::NumQMeasure::new())) },
         MeasureSpec { name: "num_ret", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::num_ret::NumRetMeasure::new())) },
         MeasureSpec { name: "num_rel", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::num_rel::NumRelMeasure::new())) },
         MeasureSpec { name: "num_rel_ret", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::num_rel_ret::NumRelRetMeasure::new())) },
@@ -183,9 +184,11 @@ pub fn registry() -> &'static [MeasureSpec] {
                 Ok(Box::new(metrics::relstring::RelstringMeasure::new(len, p)))
             },
         },
+        MeasureSpec { name: "set_P", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::set_p::SetPMeasure::new())) },
+        MeasureSpec { name: "set_recall", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::set_recall::SetRecallMeasure::new())) },
         MeasureSpec { name: "set_relative_P", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::set_relative_p::SetRelativePMeasure::new())) },
         MeasureSpec { name: "set_map", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::set_map::SetMapMeasure::new())) },
-        MeasureSpec { name: "G", status: Experimental, usage: "G[.<rel>=<gain>,...]  optional relevance-to-gain mapping (default: gain = relevance level)", factory: |p| Ok(Box::new(metrics::g::GMeasure::new(p))) },
+        MeasureSpec { name: "G", status: Production, usage: "G[.<rel>=<gain>,...]  optional relevance-to-gain mapping (default: gain = relevance level)", factory: |p| Ok(Box::new(metrics::g::GMeasure::new(p))) },
         MeasureSpec { name: "ndcg", status: Production, usage: "ndcg[.<rel>=<gain>,...]  optional relevance-to-gain mapping (default: gain = relevance level)", factory: |p| Ok(Box::new(metrics::ndcg::NdcgMeasure::new(p))) },
         MeasureSpec { name: "ndcg_rel", status: Production, usage: "ndcg_rel[.<rel>=<gain>,...]  optional relevance-to-gain mapping (default: gain = relevance level)", factory: |p| Ok(Box::new(metrics::ndcg_rel::NdcgRelMeasure::new(p))) },
         MeasureSpec { name: "Rndcg", status: Production, usage: "Rndcg[.<rel>=<gain>,...]  optional relevance-to-gain mapping (default: gain = relevance level)", factory: |p| Ok(Box::new(metrics::rndcg::RndcgMeasure::new(p))) },
@@ -207,7 +210,7 @@ pub fn registry() -> &'static [MeasureSpec] {
         },
         MeasureSpec { name: "yaap", status: Experimental, usage: "", factory: |_| Ok(Box::new(metrics::yaap::YaapMeasure::new())) },
 
-        MeasureSpec { name: "binG", status: Experimental, usage: "", factory: |_| Ok(Box::new(metrics::bin_g::BinGMeasure::new())) },
+        MeasureSpec { name: "binG", status: Production, usage: "", factory: |_| Ok(Box::new(metrics::bin_g::BinGMeasure::new())) },
     ]
 }
 
@@ -225,14 +228,22 @@ pub fn find_spec(name: &str) -> Option<&'static MeasureSpec> {
 /// Returns `None` if the name is not a known group.
 pub fn expand_group(name: &str) -> Option<&'static [&'static str]> {
     match name.to_ascii_lowercase().as_str() {
-        "official" => Some(&["runid", "num_ret", "num_rel", "num_rel_ret", "map", "Rprec", "recip_rank", "bpref", "P"]),
-        "set" => Some(&["runid", "num_ret", "num_rel", "num_rel_ret", "set_relative_P", "set_map", "set_F"]),
-        "qrels_jg" => Some(&["map_avgjg", "P_avgjg", "Rprec_mult_avgjg"]),
+        "official" => Some(&[
+            "runid", "num_q", "num_ret", "num_rel", "num_rel_ret", "map", "gm_map",
+            "Rprec", "bpref", "recip_rank", "iprec_at_recall", "P",
+        ]),
+        "set" => Some(&[
+            "runid", "num_q", "num_ret", "num_rel", "num_rel_ret", "utility", "set_P",
+            "set_relative_P", "set_recall", "set_map", "set_F",
+        ]),
+        "qrels_jg" => Some(&["runid", "num_q", "map_avgjg", "P_avgjg", "Rprec_mult_avgjg"]),
         "all_trec" => Some(&[
-
-            "runid", "num_ret", "num_rel", "num_rel_ret", "map", "Rprec", "recip_rank", "bpref", "P",
-            "ndcg_cut", "ndcg", "recall", "success", "11pt_avg", "utility", "relstring",
-            "set_relative_P", "set_map", "set_F",
+            "runid", "num_q", "num_ret", "num_rel", "num_rel_ret", "map", "gm_map",
+            "Rprec", "bpref", "recip_rank", "iprec_at_recall", "P", "relstring",
+            "recall", "infAP", "gm_bpref", "Rprec_mult", "utility", "11pt_avg",
+            "binG", "G", "ndcg", "ndcg_rel", "Rndcg", "ndcg_cut", "map_cut",
+            "relative_P", "success", "set_P", "set_relative_P", "set_recall",
+            "set_map", "set_F", "num_nonrel_judged_ret", "rbp", "rbp_resid", "unj",
         ]),
         _ => None,
     }
@@ -395,7 +406,13 @@ mod tests {
     fn official_group_expands() {
         let ms = resolve_measures(&["official".to_string()]).unwrap();
         let names: Vec<_> = ms.iter().map(|m| m.name()).collect();
-        assert_eq!(names, vec!["runid", "num_ret", "num_rel", "num_rel_ret", "map", "Rprec", "recip_rank", "bpref", "P"]);
+        assert_eq!(
+            names,
+            vec![
+                "runid", "num_q", "num_ret", "num_rel", "num_rel_ret", "map", "gm_map",
+                "Rprec", "bpref", "recip_rank", "iprec_at_recall", "P"
+            ]
+        );
     }
 
     #[test]
